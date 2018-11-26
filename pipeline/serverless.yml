@@ -1,0 +1,47 @@
+service: ${opt:service-name, 'csv-protobuf-pipeline'}
+
+plugins:
+  - serverless-iam-roles-per-function
+
+provider:
+  name: aws
+  runtime: python3.6
+  region: ${opt:region, 'us-west-2'}
+  stage: ${opt:stage, 'dev'}
+
+package:
+  include:
+    - ./**/*
+  exclude:
+    - .serverless
+    - serverless.yml
+    - node_modules/**
+
+custom:
+  buckets:
+    input: 
+      name: ${opt:input, '${self:service}-${self:provider.stage}-input'}
+    output:
+      name: ${opt:output, '${self:service}-${self:provider.stage}-output'}
+      prefix: ${opt:output-prefix, ''}
+
+functions:
+  convert:
+    handler: functions/convert.toProto
+    events:
+      - s3: ${self:custom.buckets.input.name}
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+          - s3:DeleteObject
+        Resource:
+          - arn:aws:s3:::${self:custom.buckets.input.name}/*
+      - Effect: Allow
+        Action:
+          - s3:PutObject
+        Resource:
+          - arn:aws:s3:::${self:custom.buckets.output.name}/*
+    environment:
+      train_data_bucket: ${self:custom.buckets.output.name}
+      train_data_prefix: ${self:custom.buckets.output.prefix}

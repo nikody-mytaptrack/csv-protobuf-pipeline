@@ -1,0 +1,5 @@
+{
+    "DevDependencies":{
+        "serverless-iam-roles-per-function": "^1.0.4"
+    }
+}
