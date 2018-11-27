@@ -49,7 +49,7 @@ This parameter sets the prefix to attach to the objects being output by the pipe
 **--stage** *The name of the stage*
 Stage is used to specify different environments to deploy to.
 
-**--region** *The aws region*
+**--region** *The AWS region*
 Region is used to specify the region to be deployed to.
 
 ## License
