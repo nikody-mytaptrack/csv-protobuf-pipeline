@@ -17,7 +17,8 @@ def toProto(event, context):
         s3Record = event['Records'][0]['s3']
         bucket = s3Record['bucket']['name']
         key = s3Record['object']['key']
-        localFile = '/tmp/' + key
+        
+        localFile = '/tmp/' + str(key).replace('/', '-')
         s3.Bucket(bucket).download_file(key, localFile)
         data = pandas.read_csv(localFile, delimiter=',')
         ndarray = data.values

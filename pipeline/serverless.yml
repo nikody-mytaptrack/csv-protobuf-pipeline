@@ -10,12 +10,10 @@ provider:
   stage: ${opt:stage, 'dev'}
 
 package:
-  include:
-    - ./**/*
   exclude:
-    - .serverless
-    - serverless.yml
-    - node_modules/**
+    - ./*
+    - ./pandas-layer/**
+    - ./node_modules/**
 
 custom:
   buckets:
@@ -25,17 +23,36 @@ custom:
       name: ${opt:output, '${self:service}-${self:provider.stage}-output'}
       prefix: ${opt:output-prefix, ''}
 
+  scipy:
+    us-west-2:
+      arn: arn:aws:lambda:us-west-2:420165488524:layer:AWSLambda-Python36-SciPy1x:2
+
+layers:
+  pandas:
+    path: pandas-layer
+    name: ${self:service}-${self:provider.stage}-pandas
+    description: Python's pandas library and dependencies
+    compatibleRuntimes:
+      - ${self:provider.runtime}
+    allowedAccounts:
+      - '*'
+
 functions:
   convert:
     handler: functions/convert.toProto
+    layers:
+      - ${self:custom.scipy.${self:provider.region}.arn}
+      - Ref: PandasLambdaLayer
     events:
       - s3: ${self:custom.buckets.input.name}
     iamRoleStatements:
       - Effect: Allow
         Action:
           - s3:GetObject
+          - s3:*
           - s3:DeleteObject
         Resource:
+          - arn:aws:s3:::${self:custom.buckets.input.name}
           - arn:aws:s3:::${self:custom.buckets.input.name}/*
       - Effect: Allow
         Action:
