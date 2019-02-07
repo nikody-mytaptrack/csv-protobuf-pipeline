@@ -1,1 +1,0 @@
-docker run -it dacut/amazon-linux-python-3.6
