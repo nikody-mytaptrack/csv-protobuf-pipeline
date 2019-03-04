@@ -3,5 +3,7 @@
         "serverless-iam-roles-per-function": "^1.0.4",
         "serverless-python-requirements": "^4.2.5"
     },
-    "dependencies": {}
+    "dependencies": {
+        "serverless-pseudo-parameters": "^2.4.0"
+    }
 }

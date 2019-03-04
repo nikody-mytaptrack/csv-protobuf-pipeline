@@ -2,6 +2,7 @@ service: ${opt:service-name, 'csv-protobuf-pipeline'}
 
 plugins:
   - serverless-iam-roles-per-function
+  - serverless-pseudo-parameters
 
 provider:
   name: aws
@@ -27,6 +28,11 @@ custom:
     us-west-2:
       arn: arn:aws:lambda:us-west-2:420165488524:layer:AWSLambda-Python36-SciPy1x:2
 
+  kms:
+    id: ${opt:kmsKey, ''}
+    type: ${opt:encryptionType, 'aws:kms'}
+    arn: arn:aws:kms:${self:provider.region}:#{AWS::AccountId}:key/${self:custom.kms.id}
+
 layers:
   pandas:
     path: pandas-layer
@@ -43,8 +49,6 @@ functions:
     layers:
       - ${self:custom.scipy.${self:provider.region}.arn}
       - Ref: PandasLambdaLayer
-    events:
-      - s3: ${self:custom.buckets.input.name}
     iamRoleStatements:
       - Effect: Allow
         Action:
@@ -62,6 +66,73 @@ functions:
           - s3:PutObjectTagging
         Resource:
           - arn:aws:s3:::${self:custom.buckets.output.name}/*
+      - Effect: Allow
+        Action:
+          - kms:Encrypt
+          - kms:Decrypt
+        Resource:
+          - ${self:custom.kms.arn}
     environment:
       train_data_bucket: ${self:custom.buckets.output.name}
       train_data_prefix: ${self:custom.buckets.output.prefix}
+      kms: ${self:custom.kms.id}
+
+resources:
+  Conditions:
+    useKms:
+      Fn::Not:
+        - Fn::Equals:
+            - ${self:custom.kms.id}
+            - ''
+    notKms:
+      Fn::Equals:
+        - ${self:custom.kms.id}
+        - ''
+  Resources:
+    inputBucketClear:
+      Type: AWS::S3::Bucket
+      Condition: notKms
+      Properties: 
+        AccessControl: Private
+        BucketName: ${self:custom.buckets.input.name}
+        NotificationConfiguration:
+          LambdaConfigurations:
+            - Event: s3:ObjectCreated:*
+              Function:
+                Fn::GetAtt:
+                  - ConvertLambdaFunction
+                  - Arn
+
+    inputBucket:
+      Type: AWS::S3::Bucket
+      Condition: useKms
+      DependsOn:
+        - inputBucketPermissions
+      Properties: 
+        AccessControl: Private
+        BucketName: ${self:custom.buckets.input.name}
+        BucketEncryption:
+          ServerSideEncryptionConfiguration:
+            - ServerSideEncryptionByDefault:
+                SSEAlgorithm: ${self:custom.kms.type}
+                KMSMasterKeyID: ${self:custom.kms.id}
+        NotificationConfiguration:
+          LambdaConfigurations:
+            - Event: s3:ObjectCreated:*
+              Function:
+                Fn::GetAtt:
+                  - ConvertLambdaFunction
+                  - Arn
+
+    inputBucketPermissions:
+      Type: "AWS::Lambda::Permission"
+      Properties:
+        FunctionName:
+          "Fn::GetAtt":
+            - ConvertLambdaFunction
+            - Arn
+        Principal: "s3.amazonaws.com"
+        Action: "lambda:InvokeFunction"
+        SourceAccount:
+          Ref: AWS::AccountId
+        SourceArn: "arn:aws:s3:::${self:custom.buckets.input.name}"

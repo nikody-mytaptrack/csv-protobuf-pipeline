@@ -48,7 +48,11 @@ def toProto(event, context):
         outKey = os.environ['train_data_prefix'] + key
         outBucket = os.environ['train_data_bucket']
         s3Object = s3.Object(outBucket, outKey)
-        s3Object.put(Body=buffer, Tagging=tags)
+        kms = os.environ['kms']
+        if kms is '' :
+            s3Object.put(Body=buffer, Tagging=tags)
+        else :
+            s3Object.put(Body=buffer, Tagging=tags, ServerSideEncryption='aws:kms')
 
         logger.info('Deleting old file');
         s3.Object(bucket, key).delete()
