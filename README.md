@@ -53,4 +53,4 @@ Stage is used to specify different environments to deploy to.
 Region is used to specify the region to be deployed to.
 
 ## License
-This library is licensed under the Apache License 2.0.
+This library is licensed under the MIT License
